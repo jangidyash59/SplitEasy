@@ -4,21 +4,35 @@ let transporter = null;
 
 // Initialize mail transporter with fallback
 const initTransporter = async () => {
+  // 1. Direct Gmail Service (using standard Gmail App Password)
+  if (process.env.SMTP_SERVICE === 'gmail' || (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD)) {
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.SMTP_USER || process.env.GMAIL_USER,
+        pass: process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD,
+      },
+    });
+    console.log('📧 Gmail SMTP configured for direct inbox delivery');
+    return transporter;
+  }
+
+  // 2. Custom SMTP Host (SendGrid, Brevo, Resend, Mailgun, Amazon SES)
   if (process.env.SMTP_HOST && process.env.SMTP_USER) {
     transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
+      secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465',
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
     });
-    console.log('📧 Custom SMTP configured for SplitEasy');
+    console.log(`📧 Custom SMTP configured (${process.env.SMTP_HOST}) for real delivery`);
     return transporter;
   }
 
-  // Graceful test transporter for development
+  // 3. Graceful development fallback (Ethereal test mailer - sandbox only)
   try {
     const testAccount = await nodemailer.createTestAccount();
     transporter = nodemailer.createTransport({
@@ -30,7 +44,7 @@ const initTransporter = async () => {
         pass: testAccount.pass,
       },
     });
-    console.log('📧 Ethereal test email service initialized (development mode)');
+    console.log('📧 Ethereal sandbox initialized (Note: to receive emails in real inboxes, set SMTP_USER and SMTP_PASS)');
     return transporter;
   } catch {
     console.warn('⚠️ Mail transporter init skipped — will log emails to console');
