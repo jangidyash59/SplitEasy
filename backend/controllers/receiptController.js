@@ -27,8 +27,14 @@ const scanReceipt = async (req, res) => {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    // Use gemini-3.8-flash
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.8-flash' });
+
+    // Multi-model fallback cascade to avoid quota limit (429) timeouts
+    const candidateModels = [
+      'gemini-3.5-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-flash-lite-latest',
+      'gemini-3.8-flash',
+    ];
 
     const imagePart = {
       inlineData: {
@@ -53,7 +59,27 @@ Return ONLY a raw JSON object with this exact structure (no markdown, no backtic
 If no items are listed, items can be: [{"name": "Payment", "price": totalAmount, "quantity": 1}].
 If the amount has decimals or commas, convert it to a standard JavaScript number (e.g. 25000 or 100.00).`;
 
-    const result = await model.generateContent([prompt, imagePart]);
+    let result = null;
+    let lastError = null;
+
+    for (const modelName of candidateModels) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        result = await model.generateContent([prompt, imagePart]);
+        if (result && result.response) {
+          console.log(`✅ Receipt successfully scanned using ${modelName}`);
+          break;
+        }
+      } catch (err) {
+        lastError = err;
+        console.warn(`⚠️ Model ${modelName} failed (${err.message?.substring(0, 80)}). Trying fallback...`);
+      }
+    }
+
+    if (!result || !result.response) {
+      throw lastError || new Error('All Gemini model fallbacks exhausted');
+    }
+
     const text = result.response.text().trim();
 
     // Strip any markdown code fences if present
