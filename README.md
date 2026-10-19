@@ -12,7 +12,7 @@
 ## 🌐 Live Application
 
 - **Frontend (Vercel):** [https://split-easy-two.vercel.app/](https://split-easy-two.vercel.app/)
-- **Backend API (Render):** `https://spliteasy-backend-3.onrender.com` (or your configured Render URL)
+- **Backend API (Render):** `https://spliteasy-backend-z8ho.onrender.com` (or your configured Render URL)
 - **Source Code:** [https://github.com/jangidyash59/SplitEasy](https://github.com/jangidyash59/SplitEasy)
 
 ---
